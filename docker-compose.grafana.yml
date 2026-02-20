@@ -9,12 +9,40 @@ version: "3.7"
 #    graphic logo is a trademark of OpenMRS Inc.
 
 services:
+    docker-socket-proxy:
+        image: tecnativa/docker-socket-proxy:0.2.0
+        environment:
+            CONTAINERS: 1
+            SERVICES: 1
+            TASKS: 1
+            NETWORKS: 1
+            NODES: 0
+            EVENTS: 1
+            POST: 0
+            BUILD: 0
+            COMMIT: 0
+            CONFIGS: 0
+            DISTRIBUTION: 0
+            EXEC: 0
+            IMAGES: 0
+            INFO: 1
+            SECRETS: 0
+            SWARM: 0
+            VOLUMES: 0
+            LOG_LEVEL: info
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock:ro
+        networks:
+            - monitoring
+
     loki-init:
         image: alpine:3.23
         user: "0"
         command: chown -R 10001:10001 /loki/data
         volumes:
             - loki-data:/loki/data
+        networks:
+            - monitoring
 
     loki:
         image: grafana/loki:3.6
@@ -25,13 +53,20 @@ services:
         depends_on:
             loki-init:
                 condition: service_completed_successfully
+        networks:
+            - monitoring
 
     alloy:
         image: grafana/alloy:v1.13.1
+        environment:
+            DOCKER_HOST: tcp://docker-socket-proxy:2375
         volumes:
-            - /var/run/docker.sock:/var/run/docker.sock
             - ./monitoring/config.alloy:/etc/alloy/config.alloy
         command: run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy
+        depends_on:
+            - docker-socket-proxy
+        networks:
+            - monitoring
 
     grafana:
         image: grafana/grafana:12.3
@@ -48,6 +83,12 @@ services:
             - grafana-data:/var/lib/grafana
         depends_on:
             - loki
+        networks:
+            - monitoring
+
+networks:
+    monitoring:
+        driver: bridge
 
 volumes:
     grafana-data:
