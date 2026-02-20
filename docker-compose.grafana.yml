@@ -22,6 +22,8 @@ services:
             - ./monitoring/loki-config.yaml:/etc/loki/local-config.yaml
             - loki-data:/loki/data
         command: -config.file=/etc/loki/local-config.yaml
+        security_opt:
+            - no-new-privileges:true
         depends_on:
             loki-init:
                 condition: service_completed_successfully
