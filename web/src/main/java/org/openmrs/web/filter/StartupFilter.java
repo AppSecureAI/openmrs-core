@@ -127,16 +127,41 @@ public abstract class StartupFilter implements Filter {
 			// (the "/initfilter" part is needed so that the openmrs_static_context-servlet.xml file doesn't
 			//  get instantiated early, before the locale messages are all set up)
 			if (servletPath.startsWith("/images") || servletPath.startsWith("/initfilter/scripts")) {
+				// Validate servletPath for path traversal sequences before processing
+				if (servletPath.contains("..")) {
+					log.warn("Detected attempted directory traversal in servletPath: {}", servletPath);
+					return;
+				}
+
 				// strip out the /initfilter part
 				servletPath = servletPath.replaceFirst("/initfilter", "/WEB-INF/view");
 				// writes the actual file path to the response
-				Path filePath = Paths.get(filterConfig.getServletContext().getRealPath(servletPath)).normalize();
+				String realPath = filterConfig.getServletContext().getRealPath(servletPath);
+				if (realPath == null) {
+					log.warn("Unable to resolve real path for servletPath: {}", servletPath);
+					return;
+				}
+
+				Path basePath = Paths.get(filterConfig.getServletContext().getRealPath("/")).normalize();
+				Path filePath = Paths.get(realPath).normalize();
+
+				// Validate filePath is within the allowed base path
+				if (!filePath.startsWith(basePath)) {
+					log.warn("Detected attempted directory traversal in request for {}", servletPath);
+					return;
+				}
+
 				Path fullFilePath = filePath;
-				
 				if (httpRequest.getPathInfo() != null) {
-					fullFilePath = fullFilePath.resolve(httpRequest.getPathInfo());
-					if (!(fullFilePath.normalize().startsWith(filePath))) {
-						log.warn("Detected attempted directory traversal in request for {}", httpRequest.getPathInfo());
+					String pathInfo = httpRequest.getPathInfo();
+					// Validate pathInfo for path traversal sequences
+					if (pathInfo.contains("..")) {
+						log.warn("Detected attempted directory traversal in pathInfo: {}", pathInfo);
+						return;
+					}
+					fullFilePath = filePath.resolve(pathInfo).normalize();
+					if (!fullFilePath.startsWith(filePath)) {
+						log.warn("Detected attempted directory traversal in request for {}", pathInfo);
 						return;
 					}
 				}
