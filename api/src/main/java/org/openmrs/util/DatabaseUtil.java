@@ -34,10 +34,23 @@ public class DatabaseUtil {
 
 	private DatabaseUtil() {
 	}
-	
+
 	private static final Logger log = LoggerFactory.getLogger(DatabaseUtil.class);
 
 	public static final String ORDER_ENTRY_UPGRADE_SETTINGS_FILENAME = "order_entry_upgrade_settings.txt";
+
+	private static final Set<String> ALLOWED_DATABASE_DRIVERS = new HashSet<>();
+
+	static {
+		ALLOWED_DATABASE_DRIVERS.add("com.mysql.cj.jdbc.Driver");
+		ALLOWED_DATABASE_DRIVERS.add("org.mariadb.jdbc.Driver");
+		ALLOWED_DATABASE_DRIVERS.add("org.hsqldb.jdbcDriver");
+		ALLOWED_DATABASE_DRIVERS.add("org.postgresql.Driver");
+		ALLOWED_DATABASE_DRIVERS.add("oracle.jdbc.driver.OracleDriver");
+		ALLOWED_DATABASE_DRIVERS.add("net.sourceforge.jtds.jdbc.Driver");
+		ALLOWED_DATABASE_DRIVERS.add("com.microsoft.jdbc.sqlserver.SQLServerDriver");
+		ALLOWED_DATABASE_DRIVERS.add("com.microsoft.sqlserver.jdbc.SQLServerDriver");
+	}
 
 	/**
 	 * Executes the passed SQL query, enforcing select only if that parameter is set Load the jdbc
@@ -54,6 +67,9 @@ public class DatabaseUtil {
 	 */
 	public static String loadDatabaseDriver(String connectionUrl, String connectionDriver) throws ClassNotFoundException {
 		if (StringUtils.hasText(connectionDriver)) {
+			if (!ALLOWED_DATABASE_DRIVERS.contains(connectionDriver)) {
+				throw new SecurityException("Database driver not in allowed list: " + connectionDriver);
+			}
 			Class.forName(connectionDriver);
 			log.debug("set user defined Database driver class: " + connectionDriver);
 		} else {
