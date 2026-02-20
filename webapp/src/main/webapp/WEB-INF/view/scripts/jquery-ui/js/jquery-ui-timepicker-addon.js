@@ -225,6 +225,8 @@ $.extend(Timepicker.prototype, {
 	// parse the time string from input value or _setTime
 	//########################################################################
 	_parseTime: function(timeString, withDate) {
+		// escape special regex characters to prevent ReDoS
+		var specials = new RegExp("[.*+?|()\\[\\]{}\\\\]", "g");
 		var regstr = this._defaults.timeFormat.toString()
 				.replace(/h{1,2}/ig, '(\\d?\\d)')
 				.replace(/m{1,2}/ig, '(\\d?\\d)')
@@ -232,7 +234,7 @@ $.extend(Timepicker.prototype, {
 				.replace(/l{1}/ig, '(\\d?\\d?\\d)')
 				.replace(/t{1,2}/ig, this._getPatternAmpm())
 				.replace(/z{1}/ig, '(z|[-+]\\d\\d:?\\d\\d)?')
-				.replace(/\s/g, '\\s?') + this._defaults.timeSuffix + '$',
+				.replace(/\s/g, '\\s?') + this._defaults.timeSuffix.replace(specials, "\\$&") + '$',
 			order = this._getFormatPositions(),
 			ampm = '',
 			treg;
@@ -243,8 +245,6 @@ $.extend(Timepicker.prototype, {
 			// the time should come after x number of characters and a space.
 			// x = at least the length of text specified by the date format
 			var dp_dateFormat = $.datepicker._get(this.inst, 'dateFormat');
-			// escape special regex characters in the seperator
-			var specials = new RegExp("[.*+?|()\\[\\]{}\\\\]", "g");
 			regstr = '.{' + dp_dateFormat.length + ',}' + this._defaults.separator.replace(specials, "\\$&") + regstr;
 		}
 		
