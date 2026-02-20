@@ -130,9 +130,17 @@ public abstract class StartupFilter implements Filter {
 				// strip out the /initfilter part
 				servletPath = servletPath.replaceFirst("/initfilter", "/WEB-INF/view");
 				// writes the actual file path to the response
+				String webAppRoot = filterConfig.getServletContext().getRealPath("/");
+				Path webAppRootPath = Paths.get(webAppRoot).normalize();
 				Path filePath = Paths.get(filterConfig.getServletContext().getRealPath(servletPath)).normalize();
 				Path fullFilePath = filePath;
-				
+
+				// Validate that the base file path is within the web application root
+				if (!filePath.startsWith(webAppRootPath)) {
+					log.warn("Detected attempted directory traversal in servlet path: {}", servletPath);
+					return;
+				}
+
 				if (httpRequest.getPathInfo() != null) {
 					fullFilePath = fullFilePath.resolve(httpRequest.getPathInfo());
 					if (!(fullFilePath.normalize().startsWith(filePath))) {
