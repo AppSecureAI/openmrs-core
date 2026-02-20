@@ -37,4 +37,7 @@ services:
         volumes:
             - ./:/openmrs_core
             - ./target/data:/openmrs/data/
+        tmpfs:
+            - /tmp
+        read_only: true
         restart: "no"
