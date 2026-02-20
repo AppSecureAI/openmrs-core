@@ -385,6 +385,13 @@ if (owaspCSRFGuardScriptHasLoaded !== true) {
         }
 
         /**
+         * Escape special regex characters to prevent ReDoS
+         */
+        function escapeRegex(str) {
+            return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        /**
          *  inject tokens as query string parameters into url
          */
         function injectTokenAttribute(element, attr, tokenName, tokenValue, pageTokens) {
@@ -406,7 +413,7 @@ if (owaspCSRFGuardScriptHasLoaded !== true) {
                 const calculatedPageToken = calculatePageTokenForUri(pageTokens, uri);
                 const value = calculatedPageToken == null ? tokenValue : calculatedPageToken;
 
-                const tokenValueMatcher = new RegExp('(?:' + tokenName + '=)([^?|#|&]+)', 'gi');
+                const tokenValueMatcher = new RegExp('(?:' + escapeRegex(tokenName) + '=)([^?|#|&]+)', 'gi');
                 const tokenMatches = tokenValueMatcher.exec(location);
 
                 if (tokenMatches === null || tokenMatches.length === 0) {
