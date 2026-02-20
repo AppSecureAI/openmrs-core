@@ -225,6 +225,11 @@ $.extend(Timepicker.prototype, {
 	// parse the time string from input value or _setTime
 	//########################################################################
 	_parseTime: function(timeString, withDate) {
+		// Validate input to prevent ReDoS attacks
+		if (!timeString || typeof timeString !== 'string' || timeString.length > 200) {
+			return false;
+		}
+
 		var regstr = this._defaults.timeFormat.toString()
 				.replace(/h{1,2}/ig, '(\\d?\\d)')
 				.replace(/m{1,2}/ig, '(\\d?\\d)')
@@ -247,8 +252,16 @@ $.extend(Timepicker.prototype, {
 			var specials = new RegExp("[.*+?|()\\[\\]{}\\\\]", "g");
 			regstr = '.{' + dp_dateFormat.length + ',}' + this._defaults.separator.replace(specials, "\\$&") + regstr;
 		}
-		
-		treg = timeString.match(new RegExp(regstr, 'i'));
+
+		// Sanitize regex pattern by adding upper bounds to prevent ReDoS
+		regstr = regstr.replace(/\{(\d+),\}/g, '{$1,200}');
+
+		// Use try-catch to handle potential regex errors safely
+		try {
+			treg = timeString.match(new RegExp(regstr, 'i'));
+		} catch (e) {
+			return false;
+		}
 
 		if (treg) {
 			if (order.t !== -1) {
