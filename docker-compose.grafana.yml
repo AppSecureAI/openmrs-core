@@ -25,6 +25,8 @@ services:
         depends_on:
             loki-init:
                 condition: service_completed_successfully
+        security_opt:
+            - no-new-privileges:true
 
     alloy:
         image: grafana/alloy:v1.13.1
