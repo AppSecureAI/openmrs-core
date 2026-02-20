@@ -107,8 +107,7 @@ public class BooleanConceptChangeSet implements CustomTaskChange {
 		for (Map.Entry<String, String[]> e : names.entrySet()) {
 			String locale = e.getKey();
 			for (String name : e.getValue()) {
-				Integer ret = getInt(connection, "select concept_id from concept_name where name = '" + name
-				        + "' and locale like '" + locale + "%'");
+				Integer ret = getIntParameterized(connection, "select concept_id from concept_name where name = ? and locale like ?", name, locale + "%");
 				if (ret != null) {
 					return ret;
 				}
@@ -288,18 +287,18 @@ public class BooleanConceptChangeSet implements CustomTaskChange {
 			stmt = connection.createStatement();
 			ResultSet rs = stmt.executeQuery(sql);
 			Integer result = null;
-			
+
 			if (rs.next()) {
 				result = rs.getInt(1);
 			} else {
 				// this is okay, we just return null in this case
 				log.debug("Query returned no results: " + sql);
 			}
-			
+
 			if (rs.next()) {
 				log.warn("Query returned multiple results when we expected just one: " + sql);
 			}
-			
+
 			return result;
 		}
 		catch (DatabaseException | SQLException e) {
@@ -309,6 +308,51 @@ public class BooleanConceptChangeSet implements CustomTaskChange {
 			if (stmt != null) {
 				try {
 					stmt.close();
+				}
+				catch (SQLException e) {}
+			}
+		}
+	}
+
+	/**
+	 * returns an integer resulting from the execution of a parameterized sql statement
+	 *
+	 * @param connection a DatabaseConnection
+	 * @param sql the sql statement to execute with parameter placeholders
+	 * @param params the parameters to bind to the sql statement
+	 * @return integer resulting from the execution of the sql statement
+	 * @throws CustomChangeException
+	 */
+	private Integer getIntParameterized(JdbcConnection connection, String sql, Object... params) throws CustomChangeException {
+		PreparedStatement pstmt = null;
+		try {
+			pstmt = connection.prepareStatement(sql);
+			for (int i = 0; i < params.length; i++) {
+				pstmt.setObject(i + 1, params[i]);
+			}
+			ResultSet rs = pstmt.executeQuery();
+			Integer result = null;
+
+			if (rs.next()) {
+				result = rs.getInt(1);
+			} else {
+				// this is okay, we just return null in this case
+				log.debug("Query returned no results: " + sql);
+			}
+
+			if (rs.next()) {
+				log.warn("Query returned multiple results when we expected just one: " + sql);
+			}
+
+			return result;
+		}
+		catch (DatabaseException | SQLException e) {
+			throw new CustomChangeException("Unable to get int", e);
+		}
+		finally {
+			if (pstmt != null) {
+				try {
+					pstmt.close();
 				}
 				catch (SQLException e) {}
 			}
