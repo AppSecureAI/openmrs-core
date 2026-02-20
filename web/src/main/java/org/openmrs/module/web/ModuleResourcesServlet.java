@@ -80,33 +80,53 @@ public class ModuleResourcesServlet extends HttpServlet {
 	 * @return the file being requested or null if not found
 	 */
 	protected File getFile(HttpServletRequest request) {
-		
+
 		String path = request.getPathInfo();
-		
+
 		Module module = ModuleUtil.getModuleForPath(path);
 		if (module == null) {
 			log.warn("No module handles the path: " + path);
 			return null;
 		}
-		
+
 		String relativePath = ModuleUtil.getPathForResource(module, path);
 		String realPath = getServletContext().getRealPath("") + MODULE_PATH + module.getModuleIdAsPath() + "/resources"
 		        + relativePath;
-		
+
+		String baseDir;
 		//if in dev mode, load resources from the development directory
 		File devDir = ModuleUtil.getDevelopmentDirectory(module.getModuleId());
 		if (devDir != null) {
 			realPath = devDir.getAbsolutePath() + "/omod/target/classes/web/module/resources" + relativePath;
+			baseDir = devDir.getAbsolutePath() + "/omod/target/classes/web/module/resources";
+		} else {
+			baseDir = getServletContext().getRealPath("") + MODULE_PATH + module.getModuleIdAsPath() + "/resources";
 		}
-		
+
 		realPath = realPath.replace("/", File.separator);
-		
+		baseDir = baseDir.replace("/", File.separator);
+
 		File f = new File(realPath);
 		if (!f.exists()) {
 			log.warn("No file with path '" + realPath + "' exists for module '" + module.getModuleId() + "'");
 			return null;
 		}
-		
+
+		// Validate that the resolved file path is within the intended base directory
+		// This prevents path traversal attacks using "../" sequences
+		try {
+			String canonicalPath = f.getCanonicalPath();
+			String canonicalBaseDir = new File(baseDir).getCanonicalPath();
+
+			if (!canonicalPath.startsWith(canonicalBaseDir)) {
+				log.warn("Access denied: Path traversal attempt detected for path '" + path + "'");
+				return null;
+			}
+		} catch (IOException e) {
+			log.error("Error validating file path for module '" + module.getModuleId() + "'", e);
+			return null;
+		}
+
 		return f;
 	}
 	
