@@ -12,6 +12,7 @@ services:
     loki-init:
         image: alpine:3.23
         user: "0"
+        read_only: true
         command: chown -R 10001:10001 /loki/data
         volumes:
             - loki-data:/loki/data
