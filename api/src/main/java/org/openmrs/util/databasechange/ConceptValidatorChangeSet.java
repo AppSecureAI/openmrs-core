@@ -476,16 +476,39 @@ public class ConceptValidatorChangeSet implements CustomTaskChange {
 	 * @return true if the conceptName is unique, otherwise false
 	 */
 	private boolean isNameUniqueInLocale(JdbcConnection connection, ConceptName conceptName, int conceptId) {
-		
-		int duplicates = getInt(connection,
-		    "SELECT count(*) FROM concept_name cn, concept c WHERE cn.concept_id = c.concept_id  AND (cn.concept_name_type = '"
-		            + ConceptNameType.FULLY_SPECIFIED
-		            + "' OR cn.locale_preferred = true) AND cn.voided = false AND cn.name = '"
-		            + HibernateUtil.escapeSqlWildcards(conceptName.getName(), connection.getUnderlyingConnection())
-		            + "' AND cn.locale = '"
-		            + HibernateUtil.escapeSqlWildcards(conceptName.getLocale().toString(), connection
-		                    .getUnderlyingConnection()) + "' AND c.retired = false AND c.concept_id != " + conceptId);
-		
+		PreparedStatement pStmt = null;
+		int duplicates = 0;
+
+		try {
+			pStmt = connection.prepareStatement(
+			    "SELECT count(*) FROM concept_name cn, concept c WHERE cn.concept_id = c.concept_id "
+			            + "AND (cn.concept_name_type = ? OR cn.locale_preferred = true) "
+			            + "AND cn.voided = false AND cn.name = ? AND cn.locale = ? "
+			            + "AND c.retired = false AND c.concept_id != ?");
+			pStmt.setString(1, ConceptNameType.FULLY_SPECIFIED.toString());
+			pStmt.setString(2, conceptName.getName());
+			pStmt.setString(3, conceptName.getLocale().toString());
+			pStmt.setInt(4, conceptId);
+
+			ResultSet rs = pStmt.executeQuery();
+			if (rs.next()) {
+				duplicates = rs.getInt(1);
+			}
+		}
+		catch (DatabaseException | SQLException e) {
+			log.warn("Error generated", e);
+		}
+		finally {
+			if (pStmt != null) {
+				try {
+					pStmt.close();
+				}
+				catch (SQLException e) {
+					log.warn("Failed to close the prepared statement object");
+				}
+			}
+		}
+
 		return duplicates == 0;
 	}
 	
