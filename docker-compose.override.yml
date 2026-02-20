@@ -37,4 +37,6 @@ services:
         volumes:
             - ./:/openmrs_core
             - ./target/data:/openmrs/data/
+        security_opt:
+            - no-new-privileges:true
         restart: "no"
