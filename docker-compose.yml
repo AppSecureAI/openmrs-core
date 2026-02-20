@@ -42,6 +42,7 @@ services:
             OMRS_DB_PASSWORD: ${OMRS_DB_PASSWORD:-openmrs}
             OMRS_ADMIN_USER_PASSWORD: ${OMRS_ADMIN_USER_PASSWORD:-Admin123}
             OMRS_ADMIN_PASSWORD_LOCKED: ${OMRS_ADMIN_PASSWORD_LOCKED:-true}
+        read_only: true
         healthcheck:
             test: ["CMD", "curl", "-f", "http://localhost:8080/openmrs"]
             interval: 3s
