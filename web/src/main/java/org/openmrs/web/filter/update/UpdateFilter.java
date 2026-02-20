@@ -191,8 +191,19 @@ public class UpdateFilter extends StartupFilter {
 				// need to configure velocity tool box for using user's preferred locale
 				// so we should store it for further using when configuring velocity tool context
 				String localeParameter = FilterUtil.restoreLocale(username);
-				httpRequest.getSession().setAttribute(FilterUtil.LOCALE_ATTRIBUTE, localeParameter);
-				referenceMap.put(FilterUtil.LOCALE_ATTRIBUTE, localeParameter);
+				// Validate locale against available locales before storing in session
+				Locale validatedLocale = null;
+				try {
+					Locale locale = new Locale.Builder().setLanguageTag(localeParameter.replace('_', '-')).build();
+					if (CustomResourceLoader.getInstance(httpRequest).getAvailablelocales().contains(locale)) {
+						validatedLocale = locale;
+					}
+				} catch (Exception e) {
+					log.warn("Invalid locale format from user input: " + localeParameter, e);
+				}
+				String sanitizedLocale = (validatedLocale != null) ? validatedLocale.toString() : Locale.ENGLISH.toString();
+				httpRequest.getSession().setAttribute(FilterUtil.LOCALE_ATTRIBUTE, sanitizedLocale);
+				referenceMap.put(FilterUtil.LOCALE_ATTRIBUTE, sanitizedLocale);
 				
 				renderTemplate(REVIEW_CHANGES, referenceMap, httpResponse);
 			} else {
