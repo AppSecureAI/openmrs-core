@@ -49,6 +49,9 @@ services:
             retries: 3
         volumes:
             - openmrs-data:/openmrs/data/
+        tmpfs:
+            - /tmp
+        read_only: true
 
 volumes:
     db-data:
