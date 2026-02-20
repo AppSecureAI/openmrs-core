@@ -758,22 +758,27 @@ public class ServiceContext implements ApplicationContextAware {
 	public void setModuleService(List<Object> params) {
 		String classString = (String) params.get(0);
 		Object classInstance = params.get(1);
-		
+
 		if (classString == null || classInstance == null) {
 			throw new APIException(
 			        String.format("Unable to find service as unexpected null value found for class [%s] or instance [%s]",
 			            classString, classInstance));
 		}
-		
+
+		// Validate class name to prevent unsafe reflection
+		if (!isValidJavaClassName(classString)) {
+			throw new APIException("Invalid class name format: " + classString);
+		}
+
 		Class cls = null;
-		
+
 		// load the given 'classString' class from either the openmrs class
 		// loader or the system class loader depending on if we're in a testing
 		// environment or not (system == testing, openmrs == normal)
 		try {
 			if (!useSystemClassLoader) {
 				cls = OpenmrsClassLoader.getInstance().loadClass(classString);
-				
+
 				if (cls != null && log.isDebugEnabled()) {
 					try {
 						log.debug("cls classloader: {} uid: {}", cls.getClass().getClassLoader(),
@@ -1053,11 +1058,38 @@ public class ServiceContext implements ApplicationContextAware {
 
 	/**
 	 * Clears entire API cache.
-	 * 
+	 *
 	 * @since 2.8.0
 	 */
 	public void clearEntireApiCache() {
 		CacheManager apiCacheManager = getRegisteredComponent("apiCacheManager", CacheManager.class);
 		apiCacheManager.getCacheNames().forEach(cacheName -> apiCacheManager.getCache(cacheName).invalidate());
+	}
+
+	/**
+	 * Validates that a string represents a valid Java fully-qualified class name.
+	 * This prevents unsafe reflection attacks by ensuring only properly formatted
+	 * class names can be loaded.
+	 *
+	 * @param className the class name to validate
+	 * @return true if the class name is valid, false otherwise
+	 */
+	private boolean isValidJavaClassName(String className) {
+		if (className == null || className.isEmpty()) {
+			return false;
+		}
+
+		// Check for path traversal or injection characters
+		if (className.contains("..") || className.contains("/") || className.contains("\\")) {
+			return false;
+		}
+
+		// Validate against Java class name pattern:
+		// - Must start with a letter or underscore
+		// - Can contain letters, digits, underscores, and dollar signs
+		// - Package names separated by dots
+		// - Each segment must start with a valid identifier character
+		String javaIdentifierPattern = "^[a-zA-Z_][a-zA-Z0-9_$]*(\\.[a-zA-Z_][a-zA-Z0-9_$]*)*$";
+		return className.matches(javaIdentifierPattern);
 	}
 }
