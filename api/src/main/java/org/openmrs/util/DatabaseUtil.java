@@ -40,6 +40,20 @@ public class DatabaseUtil {
 	public static final String ORDER_ENTRY_UPGRADE_SETTINGS_FILENAME = "order_entry_upgrade_settings.txt";
 
 	/**
+	 * Allowlist of permitted JDBC driver class names to prevent unsafe reflection
+	 */
+	private static final Set<String> ALLOWED_JDBC_DRIVERS = new HashSet<>();
+	static {
+		ALLOWED_JDBC_DRIVERS.add("com.mysql.cj.jdbc.Driver");
+		ALLOWED_JDBC_DRIVERS.add("org.mariadb.jdbc.Driver");
+		ALLOWED_JDBC_DRIVERS.add("org.hsqldb.jdbcDriver");
+		ALLOWED_JDBC_DRIVERS.add("org.postgresql.Driver");
+		ALLOWED_JDBC_DRIVERS.add("oracle.jdbc.driver.OracleDriver");
+		ALLOWED_JDBC_DRIVERS.add("net.sourceforge.jtds.jdbc.Driver");
+		ALLOWED_JDBC_DRIVERS.add("com.microsoft.jdbc.sqlserver.SQLServerDriver");
+	}
+
+	/**
 	 * Executes the passed SQL query, enforcing select only if that parameter is set Load the jdbc
 	 * driver class for the database which is specified by the connectionUrl and connectionDriver
 	 * parameters <br>
@@ -54,6 +68,9 @@ public class DatabaseUtil {
 	 */
 	public static String loadDatabaseDriver(String connectionUrl, String connectionDriver) throws ClassNotFoundException {
 		if (StringUtils.hasText(connectionDriver)) {
+			if (!ALLOWED_JDBC_DRIVERS.contains(connectionDriver)) {
+				throw new IllegalArgumentException("Database driver class not permitted: " + connectionDriver);
+			}
 			Class.forName(connectionDriver);
 			log.debug("set user defined Database driver class: " + connectionDriver);
 		} else {
