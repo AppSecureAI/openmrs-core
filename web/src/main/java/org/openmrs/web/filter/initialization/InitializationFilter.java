@@ -103,6 +103,18 @@ public class InitializationFilter extends StartupFilter {
 	private static final String DATABASE_H2 = "h2";
 
 	private static final String DATABASE_MARIADB = "mariadb";
+
+	/**
+	 * Whitelist of allowed JDBC driver class names to prevent unsafe reflection attacks
+	 */
+	private static final Set<String> ALLOWED_DRIVER_CLASSES = new HashSet<>(Arrays.asList(
+		"com.mysql.cj.jdbc.Driver",
+		"com.mysql.jdbc.Driver",
+		"org.mariadb.jdbc.Driver",
+		"org.postgresql.Driver",
+		"com.microsoft.sqlserver.jdbc.SQLServerDriver",
+		"org.h2.Driver"
+	));
 	
 	/**
 	 * The very first page of wizard, that asks user for select his preferred language
@@ -1003,6 +1015,19 @@ public class InitializationFilter extends StartupFilter {
 	}
 	
 	/**
+	 * Validates that the driver class name is in the whitelist of allowed drivers
+	 * to prevent unsafe reflection attacks.
+	 *
+	 * @param driverClassName the driver class name to validate
+	 * @throws ClassNotFoundException if the driver is not in the allowed list
+	 */
+	private void validateDriverClass(String driverClassName) throws ClassNotFoundException {
+		if (driverClassName == null || !ALLOWED_DRIVER_CLASSES.contains(driverClassName)) {
+			throw new ClassNotFoundException("Driver class '" + driverClassName + "' is not in the allowed list of JDBC drivers");
+		}
+	}
+
+	/**
 	 * Verify the database connection works.
 	 *
 	 * @param connectionUsername
@@ -1015,6 +1040,7 @@ public class InitializationFilter extends StartupFilter {
 		try {
 			// verify connection
 			//Set Database Driver using driver String
+			validateDriverClass(loadedDriverString);
 			Class.forName(loadedDriverString).newInstance();
 			try (Connection ignored = DriverManager.getConnection(databaseConnectionFinalUrl, connectionUsername, connectionPassword)) {
 				return true;
@@ -1182,13 +1208,16 @@ public class InitializationFilter extends StartupFilter {
 		Statement statement = null;
 		try {
 			String replacedSql = sql;
-			
+
 			// TODO how to get the driver for the other dbs...
 			if (isCurrentDatabase(DATABASE_MYSQL)) {
+				validateDriverClass("com.mysql.cj.jdbc.Driver");
 				Class.forName("com.mysql.cj.jdbc.Driver").newInstance();
 			}else if(isCurrentDatabase(DATABASE_MARIADB)){
+				validateDriverClass("org.mariadb.jdbc.Driver");
 				Class.forName("org.mariadb.jdbc.Driver").newInstance();
 			} else if (isCurrentDatabase(DATABASE_POSTGRESQL)) {
+				validateDriverClass("org.postgresql.Driver");
 				Class.forName("org.postgresql.Driver").newInstance();
 				replacedSql = replacedSql.replaceAll("`", "\"");
 			} else {

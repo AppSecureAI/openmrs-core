@@ -15,6 +15,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -34,10 +35,39 @@ public class DatabaseUtil {
 
 	private DatabaseUtil() {
 	}
-	
+
 	private static final Logger log = LoggerFactory.getLogger(DatabaseUtil.class);
 
+	/**
+	 * Whitelist of allowed JDBC driver class names to prevent unsafe reflection attacks
+	 */
+	private static final Set<String> ALLOWED_DRIVER_CLASSES = new HashSet<>(Arrays.asList(
+		"com.mysql.cj.jdbc.Driver",
+		"com.mysql.jdbc.Driver",
+		"org.mariadb.jdbc.Driver",
+		"org.postgresql.Driver",
+		"org.hsqldb.jdbcDriver",
+		"oracle.jdbc.driver.OracleDriver",
+		"net.sourceforge.jtds.jdbc.Driver",
+		"com.microsoft.jdbc.sqlserver.SQLServerDriver",
+		"com.microsoft.sqlserver.jdbc.SQLServerDriver",
+		"org.h2.Driver"
+	));
+
 	public static final String ORDER_ENTRY_UPGRADE_SETTINGS_FILENAME = "order_entry_upgrade_settings.txt";
+
+	/**
+	 * Validates that the driver class name is in the whitelist of allowed drivers
+	 * to prevent unsafe reflection attacks.
+	 *
+	 * @param driverClassName the driver class name to validate
+	 * @throws ClassNotFoundException if the driver is not in the allowed list
+	 */
+	private static void validateDriverClass(String driverClassName) throws ClassNotFoundException {
+		if (driverClassName == null || !ALLOWED_DRIVER_CLASSES.contains(driverClassName)) {
+			throw new ClassNotFoundException("Driver class '" + driverClassName + "' is not in the allowed list of JDBC drivers");
+		}
+	}
 
 	/**
 	 * Executes the passed SQL query, enforcing select only if that parameter is set Load the jdbc
@@ -54,30 +84,28 @@ public class DatabaseUtil {
 	 */
 	public static String loadDatabaseDriver(String connectionUrl, String connectionDriver) throws ClassNotFoundException {
 		if (StringUtils.hasText(connectionDriver)) {
+			validateDriverClass(connectionDriver);
 			Class.forName(connectionDriver);
 			log.debug("set user defined Database driver class: " + connectionDriver);
 		} else {
 			if (connectionUrl.contains("jdbc:mysql")) {
-				Class.forName("com.mysql.cj.jdbc.Driver");
 				connectionDriver = "com.mysql.cj.jdbc.Driver";
 			} else if (connectionUrl.contains("jdbc:mariadb")) {
-				Class.forName("org.mariadb.jdbc.Driver");
 				connectionDriver = "org.mariadb.jdbc.Driver";
 			} else if (connectionUrl.contains("jdbc:hsqldb")) {
-				Class.forName("org.hsqldb.jdbcDriver");
 				connectionDriver = "org.hsqldb.jdbcDriver";
 			} else if (connectionUrl.contains("jdbc:postgresql")) {
-				Class.forName("org.postgresql.Driver");
 				connectionDriver = "org.postgresql.Driver";
 			} else if (connectionUrl.contains("jdbc:oracle")) {
-				Class.forName("oracle.jdbc.driver.OracleDriver");
 				connectionDriver = "oracle.jdbc.driver.OracleDriver";
 			} else if (connectionUrl.contains("jdbc:jtds")) {
-				Class.forName("net.sourceforge.jtds.jdbc.Driver");
 				connectionDriver = "net.sourceforge.jtds.jdbc.Driver";
 			} else if (connectionUrl.contains("sqlserver")) {
-				Class.forName("com.microsoft.jdbc.sqlserver.SQLServerDriver");
 				connectionDriver = "com.microsoft.jdbc.sqlserver.SQLServerDriver";
+			}
+			if (connectionDriver != null) {
+				validateDriverClass(connectionDriver);
+				Class.forName(connectionDriver);
 			}
 		}
 		log.info("Set database driver class as " + connectionDriver);
