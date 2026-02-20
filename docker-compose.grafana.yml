@@ -35,6 +35,7 @@ services:
 
     grafana:
         image: grafana/grafana:12.3
+        read_only: true
         ports:
             - "3000:3000"
         environment:
@@ -46,6 +47,8 @@ services:
             - ./monitoring/grafana-dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
             - ./monitoring/dashboards:/etc/grafana/provisioning/dashboards/json
             - grafana-data:/var/lib/grafana
+        tmpfs:
+            - /tmp
         depends_on:
             - loki
 
