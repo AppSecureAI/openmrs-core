@@ -18,9 +18,12 @@ services:
 
     loki:
         image: grafana/loki:3.6
+        read_only: true
         volumes:
             - ./monitoring/loki-config.yaml:/etc/loki/local-config.yaml
             - loki-data:/loki/data
+        tmpfs:
+            - /tmp
         command: -config.file=/etc/loki/local-config.yaml
         depends_on:
             loki-init:
