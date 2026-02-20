@@ -95,8 +95,8 @@ public class SimpleXStreamSerializer implements OpenmrsSerializer {
 
 	/**
 	 * Setups XStream security using AdministrationService.getSerializerWhitelistTypes()
-	 * 
-	 * @since 2.7.0, 2.6.2, 2.5.13 
+	 *
+	 * @since 2.7.0, 2.6.2, 2.5.13
 	 * @param newXStream
 	 * @param adminService
 	 */
@@ -107,7 +107,12 @@ public class SimpleXStreamSerializer implements OpenmrsSerializer {
 			for (String type: serializerWhitelistTypes) {
 				if (type.startsWith(AdministrationService.GP_SERIALIZER_WHITELIST_HIERARCHY_TYPES_PREFIX)) {
 					try {
-						Class<?> aClass = Class.forName(type.substring(prefixLength));
+						String className = type.substring(prefixLength);
+						if (!isValidClassName(className)) {
+							log.warn("XStream serializer rejected invalid class name: " + className);
+							continue;
+						}
+						Class<?> aClass = Class.forName(className);
 						newXStream.allowTypeHierarchy(aClass);
 					} catch (ClassNotFoundException e) {
 						log.warn("XStream serializer not configured to whitelist hierarchy of " + type, e);
@@ -126,6 +131,47 @@ public class SimpleXStreamSerializer implements OpenmrsSerializer {
 				newXStream.allowTypeHierarchy(type);
 			}
 		}
+	}
+
+	/**
+	 * Validates that a class name is safe to load via reflection.
+	 * Only allows standard Java packages and OpenMRS packages.
+	 *
+	 * @param className the fully qualified class name to validate
+	 * @return true if the class name is valid and safe to load
+	 */
+	private static boolean isValidClassName(String className) {
+		if (className == null || className.trim().isEmpty()) {
+			return false;
+		}
+
+		// Reject class names with suspicious characters
+		if (className.contains("..") || className.contains("/") || className.contains("\\")) {
+			return false;
+		}
+
+		// Must match Java class name pattern
+		if (!className.matches("^[a-zA-Z_$][a-zA-Z0-9_$]*(\\.[a-zA-Z_$][a-zA-Z0-9_$]*)*$")) {
+			return false;
+		}
+
+		// Allowlist of permitted package prefixes
+		String[] allowedPrefixes = {
+			"org.openmrs.",
+			"java.",
+			"javax.",
+			"org.springframework.",
+			"org.hibernate.",
+			"org.apache.commons."
+		};
+
+		for (String prefix : allowedPrefixes) {
+			if (className.startsWith(prefix)) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
