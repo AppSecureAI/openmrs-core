@@ -28,6 +28,11 @@ services:
             - "9200:9200"
         volumes:
             - es-data:/usr/share/elasticsearch/data
+            - es-plugins:/usr/share/elasticsearch/plugins
+        tmpfs:
+            - /tmp
+            - /usr/share/elasticsearch/tmp
+        read_only: true
         restart: "always"
         command: >
             /bin/sh -c "./bin/elasticsearch-plugin list | grep -q analysis-phonetic 
@@ -55,4 +60,5 @@ services:
 
 volumes:
     es-data:
+    es-plugins:
 
