@@ -46,6 +46,9 @@ services:
             - ./monitoring/grafana-dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml
             - ./monitoring/dashboards:/etc/grafana/provisioning/dashboards/json
             - grafana-data:/var/lib/grafana
+        tmpfs:
+            - /tmp
+        read_only: true
         depends_on:
             - loki
 
