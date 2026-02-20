@@ -1015,7 +1015,7 @@ public class InitializationFilter extends StartupFilter {
 		try {
 			// verify connection
 			//Set Database Driver using driver String
-			Class.forName(loadedDriverString).newInstance();
+			Class.forName(loadedDriverString);
 			try (Connection ignored = DriverManager.getConnection(databaseConnectionFinalUrl, connectionUsername, connectionPassword)) {
 				return true;
 			}
@@ -1182,19 +1182,19 @@ public class InitializationFilter extends StartupFilter {
 		Statement statement = null;
 		try {
 			String replacedSql = sql;
-			
+
 			// TODO how to get the driver for the other dbs...
 			if (isCurrentDatabase(DATABASE_MYSQL)) {
-				Class.forName("com.mysql.cj.jdbc.Driver").newInstance();
+				Class.forName("com.mysql.cj.jdbc.Driver");
 			}else if(isCurrentDatabase(DATABASE_MARIADB)){
-				Class.forName("org.mariadb.jdbc.Driver").newInstance();
+				Class.forName("org.mariadb.jdbc.Driver");
 			} else if (isCurrentDatabase(DATABASE_POSTGRESQL)) {
-				Class.forName("org.postgresql.Driver").newInstance();
+				Class.forName("org.postgresql.Driver");
 				replacedSql = replacedSql.replaceAll("`", "\"");
 			} else {
 				replacedSql = replacedSql.replaceAll("`", "\"");
 			}
-			
+
 			String tempDatabaseConnection;
 			if (sql.contains("create database")) {
 				tempDatabaseConnection = wizardModel.databaseConnection.replace("@DBNAME@",
@@ -1202,19 +1202,19 @@ public class InitializationFilter extends StartupFilter {
 			} else {
 				tempDatabaseConnection = wizardModel.databaseConnection.replace("@DBNAME@", wizardModel.databaseName);
 			}
-			
+
 			connection = DriverManager.getConnection(tempDatabaseConnection, user, pw);
-			
+
 			for (String arg : args) {
 				arg = arg.replace(";", "&#094"); // to prevent any sql injection
 				replacedSql = replacedSql.replaceFirst("\\?", arg);
 			}
-			
+
 			// run the sql statement
 			statement = connection.createStatement();
-			
+
 			return statement.executeUpdate(replacedSql);
-			
+
 		}
 		catch (SQLException sqlex) {
 			if (!silent) {
@@ -1223,7 +1223,7 @@ public class InitializationFilter extends StartupFilter {
 				errors.put("Error executing sql: " + sql + " - " + sqlex.getMessage(), null);
 			}
 		}
-		catch (InstantiationException | ClassNotFoundException | IllegalAccessException e) {
+		catch (ClassNotFoundException e) {
 			log.error("Error generated", e);
 		}
 		finally {
