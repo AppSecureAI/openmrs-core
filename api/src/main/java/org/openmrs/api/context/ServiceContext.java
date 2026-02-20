@@ -758,22 +758,25 @@ public class ServiceContext implements ApplicationContextAware {
 	public void setModuleService(List<Object> params) {
 		String classString = (String) params.get(0);
 		Object classInstance = params.get(1);
-		
+
 		if (classString == null || classInstance == null) {
 			throw new APIException(
 			        String.format("Unable to find service as unexpected null value found for class [%s] or instance [%s]",
 			            classString, classInstance));
 		}
-		
+
+		// Validate class name to prevent unsafe reflection
+		validateClassName(classString);
+
 		Class cls = null;
-		
+
 		// load the given 'classString' class from either the openmrs class
 		// loader or the system class loader depending on if we're in a testing
 		// environment or not (system == testing, openmrs == normal)
 		try {
 			if (!useSystemClassLoader) {
 				cls = OpenmrsClassLoader.getInstance().loadClass(classString);
-				
+
 				if (cls != null && log.isDebugEnabled()) {
 					try {
 						log.debug("cls classloader: {} uid: {}", cls.getClass().getClassLoader(),
@@ -797,14 +800,62 @@ public class ServiceContext implements ApplicationContextAware {
 		catch (ClassNotFoundException e) {
 			throw new APIException("Unable to find service as class not found: " + classString, e);
 		}
-		
+
+		// Verify the loaded class matches the provided instance
+		if (cls != null && !cls.isInstance(classInstance)) {
+			throw new APIException(
+			        String.format("Security validation failed: loaded class [%s] does not match provided instance type [%s]",
+			            classString, classInstance.getClass().getName()));
+		}
+
 		// add this module service to the normal list of services
 		setService(cls, classInstance);
-		
+
 		//Run onStartup for all services implementing the OpenmrsService interface.
 		if (OpenmrsService.class.isAssignableFrom(classInstance.getClass())) {
 			moduleOpenmrsServices.put(classString, (OpenmrsService) classInstance);
 			runOpenmrsServiceOnStartup((OpenmrsService) classInstance, classString);
+		}
+	}
+
+	/**
+	 * Validates a class name to prevent unsafe reflection attacks.
+	 * Ensures the class name follows expected patterns and does not contain malicious characters.
+	 *
+	 * @param className the class name to validate
+	 * @throws APIException if the class name is invalid or potentially malicious
+	 * @since 2.8.0
+	 */
+	private void validateClassName(String className) {
+		if (className == null || className.isEmpty()) {
+			throw new APIException("Class name cannot be null or empty");
+		}
+
+		// Check for valid Java class name pattern
+		if (!className.matches("^[a-zA-Z_$][a-zA-Z0-9_$.]*$")) {
+			throw new APIException(
+			        String.format("Invalid class name format: [%s]. Class names must contain only valid Java identifier characters",
+			            className));
+		}
+
+		// Prevent loading of dangerous system classes
+		String[] blockedPrefixes = {
+			"java.lang.Runtime",
+			"java.lang.ProcessBuilder",
+			"java.lang.System",
+			"java.lang.Class",
+			"java.lang.reflect.Constructor",
+			"java.lang.reflect.Method",
+			"sun.misc.Unsafe",
+			"jdk.internal"
+		};
+
+		for (String blockedPrefix : blockedPrefixes) {
+			if (className.startsWith(blockedPrefix)) {
+				throw new APIException(
+				        String.format("Security validation failed: loading class [%s] is not allowed for security reasons",
+				            className));
+			}
 		}
 	}
 	
