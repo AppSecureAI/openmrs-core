@@ -12,6 +12,7 @@ services:
     db:
         image: mariadb:10.11.7
         command: "mariadbd --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci"
+        read_only: true
         environment:
             MARIADB_DATABASE: ${OMRS_DB_NAME:-openmrs}
             MARIADB_USER: ${OMRS_DB_USER:-openmrs}
@@ -24,6 +25,9 @@ services:
             retries: 3
         volumes:
             - db-data:/var/lib/mysql
+        tmpfs:
+            - /tmp
+            - /run/mysqld
 
     api:
         image: openmrs/openmrs-core:${TAG:-nightly}
