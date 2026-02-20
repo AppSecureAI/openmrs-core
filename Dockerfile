@@ -96,9 +96,20 @@ RUN mkdir -p /openmrs/distribution/openmrs_core/ \
     && cp -a /openmrs_core/webapp/target/openmrs.war /openmrs/distribution/openmrs_core/openmrs.war \
     && cp -a /openmrs_core/wait-for-it.sh /openmrs_core/startup-init.sh /openmrs_core/startup.sh /openmrs_core/startup-dev.sh /openmrs/  \
     && chmod +x /openmrs/wait-for-it.sh && chmod +x /openmrs/startup-init.sh && chmod +x /openmrs/startup.sh \
-    && chmod +x /openmrs/startup-dev.sh 
+    && chmod +x /openmrs/startup-dev.sh
+
+RUN chmod -R g+rwx /openmrs_core \
+    && chmod -R g+rwx /openmrs \
+    && chmod -R g+rwx /usr/share/maven/ref \
+    && chmod -R g+rwx /usr/local/tomcat \
+    && chown -R 1001 /openmrs_core \
+    && chown -R 1001 /openmrs \
+    && chown -R 1001 /usr/share/maven/ref \
+    && chown -R 1001 /usr/local/tomcat
 
 EXPOSE 8080
+
+USER 1001
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/mvn-entrypoint.sh"]
 
