@@ -86,7 +86,21 @@ public class GenerateUuid implements CustomTaskChange {
 	 * The sql statement to update the rows with the uuids. Generated in the {@link #setUp()} method.
 	 */
 	private String genericUpdateSql;
-	
+
+	/**
+	 * Validates that a table name contains only safe characters to prevent SQL injection.
+	 * Table names must contain only alphanumeric characters, underscores, and dollar signs.
+	 *
+	 * @param tableName the table name to validate
+	 * @throws CustomChangeException if the table name contains unsafe characters
+	 */
+	private void validateTableName(String tableName) throws CustomChangeException {
+		if (tableName == null || !tableName.matches("^[a-zA-Z0-9_$]+$")) {
+			throw new CustomChangeException("Invalid table name: " + tableName +
+				". Table names must contain only alphanumeric characters, underscores, and dollar signs.");
+		}
+	}
+
 	/**
 	 * Adds UUIDs to all rows for the specified tables. It generates UUIDs using Java and updates one
 	 * row at a time, thus it is not very efficient. When running on the MySQL database, we generate SQL
@@ -101,12 +115,13 @@ public class GenerateUuid implements CustomTaskChange {
 		try {
 			initialAutoCommit = connection.getAutoCommit();
 			connection.setAutoCommit(false);
-			
+
 			if ("mysql".equals(database.getShortName()) || "mariadb".equals(database.getShortName())) {
 				String updateSql = "update %s set " + columnName + " = uuid() where " + columnName + " is null";
 				for (String tablename : tableNamesArray) {
+					validateTableName(tablename);
 					String rawSql = String.format(updateSql, tablename);
-					
+
 					Statement statement = null;
 					try {
 						statement = connection.createStatement();
@@ -127,12 +142,13 @@ public class GenerateUuid implements CustomTaskChange {
 							}
 						}
 					}
-					
+
 				}
 			} else {
 				int transactionBatchSize = 0;
 				// loop over all tables
 				for (String tableName : tableNamesArray) {
+					validateTableName(tableName);
 					try {
 						Statement idStatement = null;
 						PreparedStatement updateStatement = null;
@@ -233,16 +249,21 @@ public class GenerateUuid implements CustomTaskChange {
 		if (StringUtils.isBlank(tableNames)) {
 			throw new SetupException("At least one table name in the 'tableNames' parameter is required");
 		}
-		
+
+		if (!columnName.matches("^[a-zA-Z0-9_$]+$")) {
+			throw new SetupException("Invalid column name: " + columnName +
+				". Column names must contain only alphanumeric characters, underscores, and dollar signs.");
+		}
+
 		tableNamesArray = StringUtils.split(tableNames);
 		idExceptionsMap = OpenmrsUtil.parseParameterList(idExceptions);
-		
+
 		genericIdSql = "select tablename_id from tablename where columnName is null";
 		genericIdSql = genericIdSql.replace("columnName", columnName);
-		
+
 		genericUpdateSql = "update tablename set columnName = ? where tablename_id = ?";
 		genericUpdateSql = genericUpdateSql.replace("columnName", columnName);
-		
+
 	}
 	
 	/**
