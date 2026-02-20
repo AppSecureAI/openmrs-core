@@ -12,6 +12,8 @@ services:
     db:
         image: mariadb:10.11.7
         command: "mariadbd --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci"
+        security_opt:
+            - no-new-privileges:true
         environment:
             MARIADB_DATABASE: ${OMRS_DB_NAME:-openmrs}
             MARIADB_USER: ${OMRS_DB_USER:-openmrs}
