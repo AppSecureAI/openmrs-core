@@ -35,6 +35,8 @@ services:
 
     grafana:
         image: grafana/grafana:12.3
+        security_opt:
+            - no-new-privileges:true
         ports:
             - "3000:3000"
         environment:
