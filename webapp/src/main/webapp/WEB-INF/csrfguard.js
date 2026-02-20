@@ -311,6 +311,38 @@ if (owaspCSRFGuardScriptHasLoaded !== true) {
             return uri;
         }
 
+        /**
+         * Validates regex pattern for ReDoS vulnerabilities.
+         * Detects dangerous patterns that could cause catastrophic backtracking.
+         * @param pattern The regex pattern to validate
+         * @throws Error if pattern contains ReDoS vulnerabilities
+         */
+        function validateRegexPattern(pattern) {
+            // Detect nested quantifiers that can cause exponential backtracking
+            var nestedQuantifiers = /(\+|\*|\{[\d,]+\})\s*(\+|\*|\{[\d,]+\})/;
+            if (nestedQuantifiers.test(pattern)) {
+                throw new Error('Regex pattern contains nested quantifiers that may cause ReDoS: ' + pattern);
+            }
+
+            // Detect patterns with overlapping alternation like (a|a)*
+            var overlappingAlternation = /\([^)]*\|[^)]*\)\s*(\+|\*|\{[\d,]+\})/;
+            if (overlappingAlternation.test(pattern)) {
+                throw new Error('Regex pattern contains overlapping alternation with quantifiers that may cause ReDoS: ' + pattern);
+            }
+
+            // Detect excessive backtracking patterns like (.+)*
+            var excessiveBacktracking = /\(\.\+\)\s*(\+|\*|\{[\d,]+\})|\\w\+\s*(\+|\*|\{[\d,]+\})|\\d\+\s*(\+|\*|\{[\d,]+\})/;
+            if (excessiveBacktracking.test(pattern)) {
+                throw new Error('Regex pattern contains excessive backtracking constructs that may cause ReDoS: ' + pattern);
+            }
+
+            // Detect patterns with nested groups and quantifiers like ((a+)+)
+            var nestedGroupsWithQuantifiers = /\([^)]*(\+|\*|\{[\d,]+\})[^)]*\)\s*(\+|\*|\{[\d,]+\})/;
+            if (nestedGroupsWithQuantifiers.test(pattern)) {
+                throw new Error('Regex pattern contains nested groups with quantifiers that may cause ReDoS: ' + pattern);
+            }
+        }
+
         function calculatePageTokenForUri(pageTokens, uri) {
             let value = null;
             Object.keys(pageTokens).forEach(function (pageTokenKey) {
@@ -319,6 +351,7 @@ if (owaspCSRFGuardScriptHasLoaded !== true) {
                 if (uri === pageTokenKey) {
                     value = pageToken;
                 } else if (startsWith(pageTokenKey, '^') && endsWith(pageTokenKey, '$')) { // regex matching
+                    validateRegexPattern(pageTokenKey);
                     if (new RegExp(pageTokenKey).test(uri)) {
                         value = pageToken;
                     }
