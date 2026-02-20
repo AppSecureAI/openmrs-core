@@ -476,16 +476,11 @@ public class ConceptValidatorChangeSet implements CustomTaskChange {
 	 * @return true if the conceptName is unique, otherwise false
 	 */
 	private boolean isNameUniqueInLocale(JdbcConnection connection, ConceptName conceptName, int conceptId) {
-		
+
 		int duplicates = getInt(connection,
-		    "SELECT count(*) FROM concept_name cn, concept c WHERE cn.concept_id = c.concept_id  AND (cn.concept_name_type = '"
-		            + ConceptNameType.FULLY_SPECIFIED
-		            + "' OR cn.locale_preferred = true) AND cn.voided = false AND cn.name = '"
-		            + HibernateUtil.escapeSqlWildcards(conceptName.getName(), connection.getUnderlyingConnection())
-		            + "' AND cn.locale = '"
-		            + HibernateUtil.escapeSqlWildcards(conceptName.getLocale().toString(), connection
-		                    .getUnderlyingConnection()) + "' AND c.retired = false AND c.concept_id != " + conceptId);
-		
+		    "SELECT count(*) FROM concept_name cn, concept c WHERE cn.concept_id = c.concept_id  AND (cn.concept_name_type = ? OR cn.locale_preferred = true) AND cn.voided = false AND cn.name = ? AND cn.locale = ? AND c.retired = false AND c.concept_id != ?",
+		    ConceptNameType.FULLY_SPECIFIED.toString(), conceptName.getName(), conceptName.getLocale().toString(), conceptId);
+
 		return duplicates == 0;
 	}
 	
@@ -737,41 +732,45 @@ public class ConceptValidatorChangeSet implements CustomTaskChange {
 	 *
 	 * @param connection a DatabaseConnection
 	 * @param sql the sql statement to execute
+	 * @param params the parameters for the prepared statement
 	 * @return integer resulting from the execution of the sql statement
 	 */
-	private int getInt(JdbcConnection connection, String sql) {
-		Statement stmt = null;
+	private int getInt(JdbcConnection connection, String sql, Object... params) {
+		PreparedStatement pStmt = null;
 		int result = 0;
 		try {
-			stmt = connection.createStatement();
-			ResultSet rs = stmt.executeQuery(sql);
-			
+			pStmt = connection.prepareStatement(sql);
+			for (int i = 0; i < params.length; i++) {
+				pStmt.setObject(i + 1, params[i]);
+			}
+			ResultSet rs = pStmt.executeQuery();
+
 			if (rs.next()) {
 				result = rs.getInt(1);
 			} else {
 				log.warn("No row returned by getInt() method");
 			}
-			
+
 			if (rs.next()) {
 				log.warn("Multiple rows returned by getInt() method");
 			}
-			
+
 			return result;
 		}
 		catch (DatabaseException | SQLException e) {
 			log.warn("Error generated", e);
 		}
 		finally {
-			if (stmt != null) {
+			if (pStmt != null) {
 				try {
-					stmt.close();
+					pStmt.close();
 				}
 				catch (SQLException e) {
-					log.warn("Failed to close the statement object");
+					log.warn("Failed to close the prepared statement object");
 				}
 			}
 		}
-		
+
 		return result;
 	}
 	
