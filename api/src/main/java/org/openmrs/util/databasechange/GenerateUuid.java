@@ -88,6 +88,19 @@ public class GenerateUuid implements CustomTaskChange {
 	private String genericUpdateSql;
 	
 	/**
+	 * Validates that a table name contains only safe characters to prevent SQL injection.
+	 * Table names must consist of letters, numbers, and underscores only.
+	 *
+	 * @param tableName the table name to validate
+	 * @throws CustomChangeException if the table name contains invalid characters
+	 */
+	private void validateTableName(String tableName) throws CustomChangeException {
+		if (tableName == null || !tableName.matches("^[a-zA-Z0-9_]+$")) {
+			throw new CustomChangeException("Invalid table name: " + tableName + ". Table names must contain only letters, numbers, and underscores.");
+		}
+	}
+
+	/**
 	 * Adds UUIDs to all rows for the specified tables. It generates UUIDs using Java and updates one
 	 * row at a time, thus it is not very efficient. When running on the MySQL database, we generate SQL
 	 * statements using the uuid MySQL function, which is much faster.
@@ -101,12 +114,13 @@ public class GenerateUuid implements CustomTaskChange {
 		try {
 			initialAutoCommit = connection.getAutoCommit();
 			connection.setAutoCommit(false);
-			
+
 			if ("mysql".equals(database.getShortName()) || "mariadb".equals(database.getShortName())) {
 				String updateSql = "update %s set " + columnName + " = uuid() where " + columnName + " is null";
 				for (String tablename : tableNamesArray) {
+					validateTableName(tablename);
 					String rawSql = String.format(updateSql, tablename);
-					
+
 					Statement statement = null;
 					try {
 						statement = connection.createStatement();
@@ -127,12 +141,13 @@ public class GenerateUuid implements CustomTaskChange {
 							}
 						}
 					}
-					
+
 				}
 			} else {
 				int transactionBatchSize = 0;
 				// loop over all tables
 				for (String tableName : tableNamesArray) {
+					validateTableName(tableName);
 					try {
 						Statement idStatement = null;
 						PreparedStatement updateStatement = null;
