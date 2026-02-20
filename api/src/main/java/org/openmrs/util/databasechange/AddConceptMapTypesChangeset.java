@@ -197,38 +197,38 @@ public class AddConceptMapTypesChangeset implements CustomTaskChange {
 	 * @return integer resulting from the execution of the sql statement
 	 */
 	private int getInt(JdbcConnection connection, String sql) {
-		Statement stmt = null;
+		PreparedStatement pStmt = null;
 		int result = 0;
 		try {
-			stmt = connection.createStatement();
-			ResultSet rs = stmt.executeQuery(sql);
-			
+			pStmt = connection.prepareStatement(sql);
+			ResultSet rs = pStmt.executeQuery();
+
 			if (rs.next()) {
 				result = rs.getInt(1);
 			} else {
 				log.warn("No row returned by getInt() method");
 			}
-			
+
 			if (rs.next()) {
 				log.warn("Multiple rows returned by getInt() method");
 			}
-			
+
 			return result;
 		}
 		catch (DatabaseException | SQLException e) {
 			log.warn("Error generated", e);
 		}
 		finally {
-			if (stmt != null) {
+			if (pStmt != null) {
 				try {
-					stmt.close();
+					pStmt.close();
 				}
 				catch (SQLException e) {
 					log.warn("Failed to close the statement object");
 				}
 			}
 		}
-		
+
 		return result;
 	}
 	
