@@ -11,6 +11,7 @@ version: "3.8"
 services:
     es:
         image: elasticsearch:8.17.2
+        read_only: true
         deploy:
             resources:
                 limits:
@@ -28,6 +29,10 @@ services:
             - "9200:9200"
         volumes:
             - es-data:/usr/share/elasticsearch/data
+            - es-plugins:/usr/share/elasticsearch/plugins
+        tmpfs:
+            - /tmp
+            - /var/tmp
         restart: "always"
         command: >
             /bin/sh -c "./bin/elasticsearch-plugin list | grep -q analysis-phonetic 
@@ -55,4 +60,5 @@ services:
 
 volumes:
     es-data:
+    es-plugins:
 
