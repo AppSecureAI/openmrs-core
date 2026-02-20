@@ -21,7 +21,7 @@ services:
         image: openmrs/openmrs-core:${TAG:-dev}
         build:
             target: dev
-            context: .    
+            context: .
             cache_from:
                 -   openmrs/openmrs-core:${TAG:-dev}
         ports:
@@ -30,11 +30,14 @@ services:
         environment:
             OMRS_DEV_DEBUG_PORT: ${OMRS_DEV_DEBUG_PORT:-8000}
             OMRS_CREATE_TABLES: ${OMRS_CREATE_TABLES:-true}
-            
+
             OMRS_BUILD: ${OMRS_BUILD:-true}
             OMRS_BUILD_GOALS: ${OMRS_BUILD_GOALS:-}
             OMRS_BUILD_ARGS: ${OMRS_BUILD_ARGS:-}
         volumes:
             - ./:/openmrs_core
             - ./target/data:/openmrs/data/
+        tmpfs:
+            - /tmp
+        read_only: true
         restart: "no"
