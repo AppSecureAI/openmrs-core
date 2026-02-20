@@ -34,6 +34,8 @@ services:
                 - openmrs/openmrs-core:${TAG:-nightly}
         ports:
             - "8080:8080"
+        security_opt:
+            - no-new-privileges:true
         environment:
             OMRS_DB: ${OMRS_DB:-mariadb}
             OMRS_DB_HOSTNAME: ${OMRS_DB_HOSTNAME:-db}
