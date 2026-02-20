@@ -94,9 +94,25 @@ public class SimpleXStreamSerializer implements OpenmrsSerializer {
 	}
 
 	/**
+	 * Validates that a class name follows expected Java naming conventions and doesn't contain
+	 * suspicious patterns that could be used for malicious class loading.
+	 *
+	 * @param className the fully qualified class name to validate
+	 * @return true if the class name is valid, false otherwise
+	 */
+	private static boolean isValidClassName(String className) {
+		if (className == null || className.isEmpty()) {
+			return false;
+		}
+		// Valid Java class names contain only alphanumeric characters, dots, dollar signs, and underscores
+		// No whitespace, semicolons, slashes, or other special characters that could indicate injection
+		return className.matches("^[a-zA-Z_$][a-zA-Z0-9_$.]*$");
+	}
+
+	/**
 	 * Setups XStream security using AdministrationService.getSerializerWhitelistTypes()
-	 * 
-	 * @since 2.7.0, 2.6.2, 2.5.13 
+	 *
+	 * @since 2.7.0, 2.6.2, 2.5.13
 	 * @param newXStream
 	 * @param adminService
 	 */
@@ -107,7 +123,12 @@ public class SimpleXStreamSerializer implements OpenmrsSerializer {
 			for (String type: serializerWhitelistTypes) {
 				if (type.startsWith(AdministrationService.GP_SERIALIZER_WHITELIST_HIERARCHY_TYPES_PREFIX)) {
 					try {
-						Class<?> aClass = Class.forName(type.substring(prefixLength));
+						String className = type.substring(prefixLength);
+						if (!isValidClassName(className)) {
+							log.warn("XStream serializer rejected invalid class name: " + className);
+							continue;
+						}
+						Class<?> aClass = Class.forName(className);
 						newXStream.allowTypeHierarchy(aClass);
 					} catch (ClassNotFoundException e) {
 						log.warn("XStream serializer not configured to whitelist hierarchy of " + type, e);
