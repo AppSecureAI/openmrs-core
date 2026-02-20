@@ -60,6 +60,7 @@ import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 
 import jakarta.activation.MimetypesFileTypeMap;
+import javax.xml.XMLConstants;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerException;
@@ -1125,6 +1126,8 @@ public class OpenmrsUtil {
 		try {
 			outStream = new FileOutputStream(outFile);
 			TransformerFactory tFactory = TransformerFactory.newInstance();
+			tFactory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+			tFactory.setAttribute(XMLConstants.ACCESS_EXTERNAL_STYLESHEET, "");
 			Transformer transformer = tFactory.newTransformer();
 			transformer.setOutputProperty(OutputKeys.INDENT, "yes");
 			
