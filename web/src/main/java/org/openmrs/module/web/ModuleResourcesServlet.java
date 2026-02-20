@@ -80,33 +80,52 @@ public class ModuleResourcesServlet extends HttpServlet {
 	 * @return the file being requested or null if not found
 	 */
 	protected File getFile(HttpServletRequest request) {
-		
+
 		String path = request.getPathInfo();
-		
+
 		Module module = ModuleUtil.getModuleForPath(path);
 		if (module == null) {
 			log.warn("No module handles the path: " + path);
 			return null;
 		}
-		
+
 		String relativePath = ModuleUtil.getPathForResource(module, path);
 		String realPath = getServletContext().getRealPath("") + MODULE_PATH + module.getModuleIdAsPath() + "/resources"
 		        + relativePath;
-		
+
 		//if in dev mode, load resources from the development directory
 		File devDir = ModuleUtil.getDevelopmentDirectory(module.getModuleId());
 		if (devDir != null) {
 			realPath = devDir.getAbsolutePath() + "/omod/target/classes/web/module/resources" + relativePath;
 		}
-		
+
 		realPath = realPath.replace("/", File.separator);
-		
+
 		File f = new File(realPath);
 		if (!f.exists()) {
 			log.warn("No file with path '" + realPath + "' exists for module '" + module.getModuleId() + "'");
 			return null;
 		}
-		
+
+		// Validate that the canonical path is within the expected base directory to prevent path traversal
+		try {
+			String canonicalPath = f.getCanonicalPath();
+			String basePath;
+			if (devDir != null) {
+				basePath = new File(devDir.getAbsolutePath() + "/omod/target/classes/web/module/resources").getCanonicalPath();
+			} else {
+				basePath = new File(getServletContext().getRealPath("") + MODULE_PATH + module.getModuleIdAsPath() + "/resources").getCanonicalPath();
+			}
+
+			if (!canonicalPath.startsWith(basePath + File.separator) && !canonicalPath.equals(basePath)) {
+				log.warn("Path traversal attempt detected: requested path '" + path + "' resolves outside module resources directory");
+				return null;
+			}
+		} catch (IOException e) {
+			log.error("Failed to resolve canonical path for security validation", e);
+			return null;
+		}
+
 		return f;
 	}
 	
