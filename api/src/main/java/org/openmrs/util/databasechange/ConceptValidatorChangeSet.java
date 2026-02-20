@@ -498,15 +498,16 @@ public class ConceptValidatorChangeSet implements CustomTaskChange {
 	 */
 	@SuppressWarnings("unchecked")
 	private List<Locale> getAllowedLocalesList(JdbcConnection connection) {
-		Statement stmt = null;
+		PreparedStatement pStmt = null;
+		PreparedStatement pStmt2 = null;
 		ListOrderedSet allowedLocales = new ListOrderedSet();
-		
+
 		try {
 			//get the default locale
-			stmt = connection.createStatement();
-			ResultSet rsDefaultLocale = stmt.executeQuery("SELECT property_value FROM global_property WHERE property = '"
-			        + OpenmrsConstants.GLOBAL_PROPERTY_DEFAULT_LOCALE + "'");
-			
+			pStmt = connection.prepareStatement("SELECT property_value FROM global_property WHERE property = ?");
+			pStmt.setString(1, OpenmrsConstants.GLOBAL_PROPERTY_DEFAULT_LOCALE);
+			ResultSet rsDefaultLocale = pStmt.executeQuery();
+
 			if (rsDefaultLocale.next()) {
 				String defaultLocaleStr = rsDefaultLocale.getString("property_value");
 				if (!StringUtils.isBlank(defaultLocaleStr) && defaultLocaleStr.length() > 1) {
@@ -519,13 +520,14 @@ public class ConceptValidatorChangeSet implements CustomTaskChange {
 					        + "' is an invalid value for the global property default locale");
 				}
 			}
-			
+
 			allowedLocales.add(defaultLocale);
-			
+
 			//get the locale.allowed.list
-			ResultSet rsAllowedLocales = stmt.executeQuery("SELECT property_value FROM global_property WHERE property = '"
-			        + OpenmrsConstants.GLOBAL_PROPERTY_LOCALE_ALLOWED_LIST + "'");
-			
+			pStmt2 = connection.prepareStatement("SELECT property_value FROM global_property WHERE property = ?");
+			pStmt2.setString(1, OpenmrsConstants.GLOBAL_PROPERTY_LOCALE_ALLOWED_LIST);
+			ResultSet rsAllowedLocales = pStmt2.executeQuery();
+
 			if (rsAllowedLocales.next()) {
 				String allowedLocaleStr = rsAllowedLocales.getString("property_value");
 				if (!StringUtils.isBlank(allowedLocaleStr)) {
@@ -547,12 +549,20 @@ public class ConceptValidatorChangeSet implements CustomTaskChange {
 			log.warn("Error generated", e);
 		}
 		finally {
-			if (stmt != null) {
+			if (pStmt != null) {
 				try {
-					stmt.close();
+					pStmt.close();
 				}
 				catch (SQLException e) {
-					log.warn("Failed to close the statement object");
+					log.warn("Failed to close the prepared statement object");
+				}
+			}
+			if (pStmt2 != null) {
+				try {
+					pStmt2.close();
+				}
+				catch (SQLException e) {
+					log.warn("Failed to close the prepared statement object");
 				}
 			}
 		}
