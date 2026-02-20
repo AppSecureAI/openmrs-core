@@ -32,6 +32,8 @@ services:
             cache_from:
                 - openmrs/openmrs-core:${TAG:-dev}
                 - openmrs/openmrs-core:${TAG:-nightly}
+        security_opt:
+            - no-new-privileges:true
         ports:
             - "8080:8080"
         environment:
