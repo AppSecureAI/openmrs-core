@@ -964,6 +964,13 @@ public class InitializationFilter extends StartupFilter {
 			rememberLocale = true;
 		}
 		if (localeParameter != null) {
+			// Validate locale parameter against available locales to prevent trust boundary violation
+			Locale requestedLocale = Locale.forLanguageTag(localeParameter.replace('_', '-'));
+			if (!CustomResourceLoader.getInstance(httpRequest).getAvailablelocales().contains(requestedLocale)) {
+				log.warn("Invalid locale parameter received: " + localeParameter + ". Using default locale.");
+				localeParameter = Locale.ENGLISH.toString();
+			}
+
 			String storedLocale = null;
 			if (httpRequest.getSession().getAttribute(FilterUtil.LOCALE_ATTRIBUTE) != null) {
 				storedLocale = httpRequest.getSession().getAttribute(FilterUtil.LOCALE_ATTRIBUTE).toString();
