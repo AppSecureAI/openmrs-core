@@ -63,6 +63,7 @@ import org.openmrs.liquibase.ChangeSetExecutorCallback;
 import org.openmrs.util.DatabaseUpdaterLiquibaseProvider;
 import org.openmrs.util.DatabaseUtil;
 import org.openmrs.util.InputRequiredException;
+import org.openmrs.util.LocaleUtility;
 import org.openmrs.util.OpenmrsConstants;
 import org.openmrs.util.OpenmrsThreadPoolHolder;
 import org.openmrs.util.OpenmrsUtil;
@@ -964,20 +965,28 @@ public class InitializationFilter extends StartupFilter {
 			rememberLocale = true;
 		}
 		if (localeParameter != null) {
+			// validate the user-supplied locale against the set of locales the application
+			// actually supports before it is allowed to cross into the session trust boundary
+			Locale requestedLocale = LocaleUtility.fromSpecification(localeParameter);
+			if (requestedLocale == null
+				|| !CustomResourceLoader.getInstance(httpRequest).getAvailablelocales().contains(requestedLocale)) {
+				return;
+			}
+			String validatedLocale = requestedLocale.toString();
 			String storedLocale = null;
 			if (httpRequest.getSession().getAttribute(FilterUtil.LOCALE_ATTRIBUTE) != null) {
 				storedLocale = httpRequest.getSession().getAttribute(FilterUtil.LOCALE_ATTRIBUTE).toString();
 			}
 			// if user has changed locale parameter to new one
 			// or chooses it parameter at first page loading
-			if (storedLocale == null || !storedLocale.equals(localeParameter)) {
-				log.info("Stored locale parameter to session " + localeParameter);
-				httpRequest.getSession().setAttribute(FilterUtil.LOCALE_ATTRIBUTE, localeParameter);
+			if (storedLocale == null || !storedLocale.equals(validatedLocale)) {
+				log.info("Stored locale parameter to session " + validatedLocale);
+				httpRequest.getSession().setAttribute(FilterUtil.LOCALE_ATTRIBUTE, validatedLocale);
 			}
 			if (rememberLocale) {
-				httpRequest.getSession().setAttribute(FilterUtil.LOCALE_ATTRIBUTE, localeParameter);
+				httpRequest.getSession().setAttribute(FilterUtil.LOCALE_ATTRIBUTE, validatedLocale);
 				httpRequest.getSession().setAttribute(FilterUtil.REMEMBER_ATTRIBUTE, true);
-				wizardModel.localeToSave = localeParameter;
+				wizardModel.localeToSave = validatedLocale;
 			} else {
 				// we need to reset it if it was set before
 				httpRequest.getSession().setAttribute(FilterUtil.REMEMBER_ATTRIBUTE, null);
