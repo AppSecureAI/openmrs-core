@@ -80,33 +80,49 @@ public class ModuleResourcesServlet extends HttpServlet {
 	 * @return the file being requested or null if not found
 	 */
 	protected File getFile(HttpServletRequest request) {
-		
+
 		String path = request.getPathInfo();
-		
+
 		Module module = ModuleUtil.getModuleForPath(path);
 		if (module == null) {
 			log.warn("No module handles the path: " + path);
 			return null;
 		}
-		
+
 		String relativePath = ModuleUtil.getPathForResource(module, path);
-		String realPath = getServletContext().getRealPath("") + MODULE_PATH + module.getModuleIdAsPath() + "/resources"
-		        + relativePath;
-		
+		String baseDirPath = getServletContext().getRealPath("") + MODULE_PATH + module.getModuleIdAsPath() + "/resources";
+
 		//if in dev mode, load resources from the development directory
 		File devDir = ModuleUtil.getDevelopmentDirectory(module.getModuleId());
 		if (devDir != null) {
-			realPath = devDir.getAbsolutePath() + "/omod/target/classes/web/module/resources" + relativePath;
+			baseDirPath = devDir.getAbsolutePath() + "/omod/target/classes/web/module/resources";
 		}
-		
-		realPath = realPath.replace("/", File.separator);
-		
-		File f = new File(realPath);
-		if (!f.exists()) {
-			log.warn("No file with path '" + realPath + "' exists for module '" + module.getModuleId() + "'");
+
+		baseDirPath = baseDirPath.replace("/", File.separator);
+		relativePath = relativePath.replace("/", File.separator);
+
+		File baseDir = new File(baseDirPath);
+		File f = new File(baseDir, relativePath);
+
+		try {
+			String canonicalBaseDirPath = baseDir.getCanonicalPath() + File.separator;
+			String canonicalFilePath = f.getCanonicalPath();
+			if (!canonicalFilePath.startsWith(canonicalBaseDirPath)) {
+				log.warn("Resolved path '" + canonicalFilePath + "' is outside of the allowed resource directory '"
+				        + canonicalBaseDirPath + "' for module '" + module.getModuleId() + "'");
+				return null;
+			}
+		}
+		catch (IOException e) {
+			log.warn("Unable to resolve canonical path for module '" + module.getModuleId() + "'", e);
 			return null;
 		}
-		
+
+		if (!f.exists()) {
+			log.warn("No file with path '" + f.getPath() + "' exists for module '" + module.getModuleId() + "'");
+			return null;
+		}
+
 		return f;
 	}
 	
