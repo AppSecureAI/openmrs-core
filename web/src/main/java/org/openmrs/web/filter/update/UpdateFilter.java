@@ -152,8 +152,8 @@ public class UpdateFilter extends StartupFilter {
 			
 			String username = httpRequest.getParameter("username");
 			String password = httpRequest.getParameter("password");
-			
-			log.debug("Attempting to authenticate user: " + username);
+
+			log.debug("Attempting to authenticate user: {}", username == null ? null : username.replaceAll("[\r\n]", ""));
 			if (authenticateAsSuperUser(username, password)) {
 				log.debug("Authentication successful.  Redirecting to 'reviewupdates' page.");
 				// set a variable so we know that the user started here
